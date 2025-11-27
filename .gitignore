@@ -1,6 +1,5 @@
 .qtcreator
 build
-.*.*.swn
-.*.*.swo
-.*.*.swp
+.*
+!.gitignore
 
