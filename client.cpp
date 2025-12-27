@@ -76,17 +76,17 @@ int32_t query(int fd, const std::vector<std::string>& txt) {
     memcpy(wbuf, &len, 4); // we assume little endian
     uint32_t nstr = txt.size();
     memcpy(&wbuf[4], &nstr, 4);
-
+    printf("request body: "); 
     uint32_t curr = 8;
     for (size_t i = 0; i < txt.size(); i++) {
         const std::string &req = txt[i];
 	uint32_t slen = (uint32_t)req.size();
-        printf("[CLIENT] String %zu: len=%u, content='%.*s'\n", 
-               i, slen, (int)(slen > 50 ? 50 : slen), req.c_str());
+        printf("%.*s ", req.c_str());
 	memcpy(&wbuf[curr], &slen, 4);
 	memcpy(&wbuf[curr + 4], req.data(), slen);
 	curr += 4 + slen;
     }
+    printf("\n");
     
     int err = write_full(fd, wbuf, len + 4);
     if (err) {
