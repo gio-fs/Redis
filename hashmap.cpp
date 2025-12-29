@@ -113,3 +113,22 @@ void insertHMap(HMap* map, HNode* key) {
 
     helpRehashing(map);
 }
+
+static bool foreachHTab(HTab* tab, bool (*fn) (HNode*, void*), void* arg) {
+     for (int i = 0; tab->mask != 0 && i <= tab->mask; ++i) {
+	for (HNode* curr = tab->slots[i]; curr != NULL; curr = curr->next) {
+	    if (!fn(curr, arg)) {
+		return false;
+	    }
+ 	}
+    }
+    return true;
+}
+
+void foreachHMap(HMap* map, bool (*fn) (HNode*, void*), void* arg) {
+   foreachHTab(&map->newer, fn, arg) && foreachHTab(&map->older, fn, arg);
+}
+
+size_t sizeHMap(HMap* map) {
+    return map->older.size + map->newer.size;
+}

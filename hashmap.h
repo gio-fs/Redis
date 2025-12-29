@@ -24,8 +24,8 @@ HNode* lookupHMap(HMap* map, HNode* key, bool (*eq)(HNode*, HNode*));
 HNode* deleteHMap(HMap* map, HNode* key, bool (*eq)(HNode*, HNode*));
 void insertHMap(HMap* map, HNode* key);
 void helRehashing(HMap* map);
-
-
+void foreachHMap(HMap* map, bool (*fn) (HNode*, void*), void* arg);
+size_t sizeHMap(HMap* map);
 
 
 

@@ -14,6 +14,7 @@
 #include <sys/socket.h>
 #include <netinet/ip.h>
 #include <vector>
+#include <functional>
 
 #include "hashmap.h"
 
@@ -34,11 +35,6 @@ struct Conn {
     Buf outgoing {}; // responses to write to the socket
 };
 
-enum {
-    RES_OK = 0,
-    RES_ERR = 1,
-    RES_NX = 2, // not found
-};
 
 struct {
     HMap db;
@@ -133,10 +129,11 @@ static void out_nil(Buf &out) {
     buf_append_u8(out, TAG_NIL);
 }
 
-static void out_err(Buf &out, uint32_t err, const char* data) {
+static void out_err(Buf &out, uint32_t err, std::string &&data) {
     buf_append_u8(out, TAG_ERR);
     buf_append_u32(out, err);
-    buf_append(out, (const uint8_t*)data, (uint32_t)size);
+    buf_append_u32(out, (uint32_t)data.size());
+    buf_append(out, (const uint8_t*)data.data(), (uint32_t)data.size());
 }
 
 static void out_str(Buf &out, const char* data, size_t size) {
@@ -145,18 +142,18 @@ static void out_str(Buf &out, const char* data, size_t size) {
     buf_append(out, (const uint8_t*)data, (uint32_t)size);
 }
 
-static void out_int(Buf &out, uint64_t data) {
+static void out_int(Buf &out, int64_t data) {
     buf_append_u8(out, TAG_INT);
     buf_append_i64(out, data);
 }
 
-static void out_dbl(Buf &buf, double data) {
-    buf_append(out, TAG_DBL);
+static void out_dbl(Buf &out, double data) {
+    buf_append_u8(out, TAG_DBL);
     buf_append(out, (const uint8_t*)&data, 8);
 }
 
-static void out_arr(Buf &buf, uint32_t dim) {
-    buf_append(out, TAG_ARR);
+static void out_arr(Buf &out, uint32_t dim) {
+    buf_append_u8(out, TAG_ARR);
     buf_append_u32(out, dim);
 }
 
@@ -235,10 +232,10 @@ static void start_response(Buf &out, size_t* header) {
 }
 
 static void end_response(Buf &out, size_t header) {
-    uint32_t len = (uint32_t)response_size(res, header); 
+    uint32_t len = (uint32_t)response_size(out, header); 
     if (len > MAX_LEN) {
-	res.data.resize(header + 4);
-	out_err(res.data, ERR_TOO_BIG, "response size is too big");
+	out.resize(header + 4);
+	out_err(out, ERR_TOO_BIG, "response size is too big");
 	len = (uint32_t)response_size(out, header);
     }
     memcpy(&out[header], &len, 4);
@@ -279,12 +276,13 @@ static void process_set(std::vector<std::string> &cmd, Buf &out) {
 	ent->key.swap(entry.key);
 	ent->val.swap(cmd[2]);
 	insertHMap(&kv_store.db, &ent->node);
+	out_nil(out);
     } else {
 	// if found, get the corresponding entry and update its .val
 	container_of(node, Entry, node)->val.swap(cmd[2]);
+	out_str(out, cmd[2].data(), cmd[2].size());
     }
 
-    out_str(out, cmd[2].data(), cmd[2].size());
 }
 
 
@@ -295,11 +293,23 @@ static void process_del(std::vector<std::string> &cmd, Buf &out) {
     HNode* node = deleteHMap(&kv_store.db, &entry.node, &entry_eq);
     if (node) {
 	Entry* to_del = container_of(node, Entry, node);
-	out_str(out, to_del->val.data(), to_del->val.size());
+	out_str(out, to_del->val.data(), to_del->val.size()); // return the value deleted
 	delete to_del; // deallocate entry 
     }
 }
 
+
+static bool get_keys(HNode* node, void* arg) {
+    Buf &out = *(Buf*)arg;
+    std::string &key = container_of(node, Entry, node)->key;
+    out_str(out, key.data(), key.size());
+    return true;
+}
+
+static void process_keys(std::vector<std::string> &cmd, Buf &out) {
+    out_arr(out, (uint32_t)sizeHMap(&kv_store.db));
+    foreachHMap(&kv_store.db, &get_keys, (void*)&out);
+}
 
 
 static void process_req(std::vector<std::string> &cmd, Buf &out) {
@@ -309,8 +319,10 @@ static void process_req(std::vector<std::string> &cmd, Buf &out) {
 	process_set(cmd, out);
     } else if (cmd.size() == 2 && cmd[0] == "del") {
 	process_del(cmd, out);
+    } else if (cmd.size() == 1 && cmd[0] == "keys"){  
+	process_keys(cmd, out);
     } else {
-	out_err(out, ERR_UNKNOWN, "bad request"); // unknown cmd
+	out_err(out, ERR_UNKNOWN, std::string("bad request")); // unknown cmd
     }
 }
         

@@ -1,6 +1,7 @@
 .qtcreator
 a.out
 build
+obj
 .*
 !.gitignore
 
