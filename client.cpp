@@ -72,7 +72,6 @@ int write_full(int fd, const char* buf, size_t n) {
    return 0;
 }
 
-
 int32_t query(int fd, const std::vector<std::string>& txt) {
     uint32_t len = 4;
     for (const std::string &s : txt) {
@@ -142,14 +141,14 @@ static int print_response(uint8_t* res, size_t len) {
 	case TAG_STR:
 	    if (len < 1 + 4) {
 		msg("bad response");
-		return -1;
+		    return -1;
 	    }	      
 	{
 	    uint32_t strlen = 0;
 	    memcpy(&strlen, &res[1], 4);
 	    if (strlen > MAX_LEN) {
 		msg("response is too long");
-		return -1;
+		    return -1;
 	    }
 	    printf("(str) %.*s\n", strlen, &res[1 + 4]);
 	    return 1 + 4 + strlen;
