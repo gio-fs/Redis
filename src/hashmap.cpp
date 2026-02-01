@@ -1,5 +1,7 @@
 #include <assert.h>
 #include <cstdlib>
+
+#include "logger.h"
 #include "hashmap.h"
 
 const size_t max_load_factor = 4;
@@ -13,6 +15,12 @@ static void initHTab(HTab* tab, size_t size) {
     tab->size = 0;
 }
 
+void hmap_clear(HMap* map) {
+    if (map->newer.slots) free(map->newer.slots);
+    if (map->older.slots) free(map->older.slots);
+    *map = HMap{};
+}
+
 // no data alloc: intrusive linked lists
 static void insertHTab(HTab* tab, HNode* node) {
     size_t pos = node->hash & tab->mask;
@@ -24,7 +32,7 @@ static void insertHTab(HTab* tab, HNode* node) {
 
 static HNode** lookupHTab(HTab* tab, HNode* key, bool (*eq)(HNode*, HNode*)) {
     if (!tab->slots) {
-	return NULL;
+	    return NULL;
     }
     uint32_t pos = key->hash & tab->mask;
     HNode** from = &tab->slots[pos];
@@ -51,20 +59,20 @@ static HNode* detachHTab(HTab* tab, HNode** from) {
 void helpRehashing(HMap* map) {
     size_t nwork = 0;
     while (map->older.size > 0 && nwork < k_work) {
-	HNode** from = &map->older.slots[map->migrate_pos];
-	if (!*from) {
-	    map->migrate_pos++;
-	    continue;
-	}
-	// move the node 
-	insertHTab(&map->newer, detachHTab(&map->older, from));
-	nwork++;
+        HNode** from = &map->older.slots[map->migrate_pos];
+        if (!*from) {
+            map->migrate_pos++;
+            continue;
+        }
+        // move the node 
+        insertHTab(&map->newer, detachHTab(&map->older, from));
+        nwork++;
     }
     
     // if older.slots is not empty, free it 
     if (map->older.size == 0 && map->older.slots) { 
-	free(map->older.slots);
-	map->older = HTab{};
+        free(map->older.slots);
+        map->older = HTab{};
     }
 }
 
@@ -96,31 +104,31 @@ HNode* deleteHMap(HMap* map, HNode* key, bool (*eq)(HNode*, HNode*)) {
     return NULL;
 }
 
-	    
-
 void insertHMap(HMap* map, HNode* key) {
     if (!map->newer.slots) {
-	initHTab(&map->newer, init_size);
+	    initHTab(&map->newer, init_size);
     }
     insertHTab(&map->newer, key);
-    
+    LOG_DEBUG("inserted node in map->newer");
+
     if (!map->older.slots) {
-	uint32_t max_size = (map->newer.mask + 1) * max_load_factor;
-	if (map->newer.size >= max_size) {
-	    triggerRehashingHMap(map);
-	}
+        uint32_t max_size = (map->newer.mask + 1) * max_load_factor;
+        if (map->newer.size >= max_size) {
+            triggerRehashingHMap(map);
+            LOG_WARN("triggered rehash");
+        }
     }
 
     helpRehashing(map);
 }
 
 static bool foreachHTab(HTab* tab, bool (*fn) (HNode*, void*), void* arg) {
-     for (int i = 0; tab->mask != 0 && i <= tab->mask; ++i) {
-	for (HNode* curr = tab->slots[i]; curr != NULL; curr = curr->next) {
-	    if (!fn(curr, arg)) {
-		return false;
-	    }
- 	}
+    for (int i = 0; tab->mask != 0 && i <= tab->mask; ++i) {
+        for (HNode* curr = tab->slots[i]; curr != NULL; curr = curr->next) {
+            if (!fn(curr, arg)) {
+                return false;
+            }
+        }
     }
     return true;
 }
@@ -131,4 +139,13 @@ void foreachHMap(HMap* map, bool (*fn) (HNode*, void*), void* arg) {
 
 size_t sizeHMap(HMap* map) {
     return map->older.size + map->newer.size;
+}
+
+uint64_t hash_str(const uint8_t *data, size_t len) { 
+    uint64_t hash = 0x8119C9DC5;
+    for (size_t i = 0; i < len; i++) {
+	    hash = (hash + data[i]) * 0x01000193;
+    }
+
+    return hash;
 }

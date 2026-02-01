@@ -1,6 +1,6 @@
 for i in {1..100} 
 do
-	./client set br-$i T$i
+	/root/Redis/obj/client set br-$i T$i
 done
 
-./client keys
+/root/Redis/obj/client keys

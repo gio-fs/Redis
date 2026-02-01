@@ -26,7 +26,8 @@ void insertHMap(HMap* map, HNode* key);
 void helRehashing(HMap* map);
 void foreachHMap(HMap* map, bool (*fn) (HNode*, void*), void* arg);
 size_t sizeHMap(HMap* map);
-
+uint64_t hash_str(const uint8_t *data, size_t len);
+void hmap_clear(HMap* map);
 
 
 

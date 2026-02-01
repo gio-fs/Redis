@@ -1,5 +1,5 @@
 #pragma once 
-#define MAX_LEN 4096
+#define MAX_LEN 16384
 
 enum {
     TAG_NIL = 0,
@@ -12,8 +12,11 @@ enum {
 
 enum {
     ERR_TOO_BIG = 0,
-    ERR_UNKNOWN = 1
+    ERR_BAD_ARG = 1,
+    ERR_UNKNOWN = 2,
+    ERR_NOT_FOUND = 3
 };
+
 
 
 
