@@ -1,0 +1,1 @@
+Currently following the "build your own x" Redis eBook, working on personalizing it with some alternative design choices. Deepening my understanding as much as possible with frequent comments and thinking of the exact reasoning behind every decision     
